@@ -23,11 +23,12 @@ public class Main {
 
     Controller controller;
     menu();
+    controller = Controller.getController(); controller.init();
     while(true) {
       try {
         opt = stdin.nextInt();
         switch(opt) {
-          case 1: controller = Controller.getController(); controller.start(); menu(); break;
+          case 1: controller = Controller.getController(); controller.start(); Thread t = new Thread(Controller.getController()); t.start(); menu(); break;
           case 2: controller = Controller.getController(); controller.status(stdin); menu(); break;
           case 3: controller = Controller.getController(); controller.stop(); menu(); break;
           case 4: return;

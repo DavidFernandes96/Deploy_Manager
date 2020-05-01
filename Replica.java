@@ -1,11 +1,15 @@
+import java.util.*;
+
 public class Replica {
   private String name;
   private boolean status;
+  private int id;
   private static int numberReplicas = 0;
 
   public Replica(String name) {
     this.name = name;
     numberReplicas++;
+    this.id = numberReplicas;
   }
 
   public void setName(String name) {
@@ -24,7 +28,11 @@ public class Replica {
     return this.status;
   }
 
-  public int getNumberReplicas() {
+  public static int getNumberReplicas() {
     return numberReplicas;
+  }
+
+  public int getId() {
+    return this.id;
   }
 }
