@@ -150,8 +150,7 @@ public class Controller implements Runnable {
             bw.write("config.vm.define \"" + data[1] + "\" do |vm" + contVM + "|");
             bw.newLine();
             pool.add(new Replica(data[1]));
-            if(data[0].equals("Vagrant-Alpine")) bw.write("vm" + contVM + ".ssh.shell = \"ash\""); //need to install bash on alpine...this part shouldn't be here
-            else bw.write("vm" + contVM + ".vm.hostname = \"" + data[1] + "\"");
+            bw.write("vm" + contVM + ".vm.hostname = \"" + data[1] + "\"");
             bw.newLine();
             bw.write("vm" + contVM++ + ".vm.box = \"" + data[0] + "\"");
             bw.newLine();
