@@ -1,23 +1,26 @@
 import java.util.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.Thread;
 import java.io.*;
-import java.util.concurrent.ThreadLocalRandom;
+import java.lang.Thread;
 
 public class Controller implements Runnable {
   //private static final int THRESHOLD = ???;
+  private static final int MIN_REPLICAS_RUNNING = 1;
 
   private static Controller controller = null;
-  private String[] commands;
-  private boolean running;
-  private Set<Replica> config;
-  private Set<Replica> pool; //set with the available replicas (not running)
-  private Set<Replica> quarantined;
+  private static String[] commands;
+  private static boolean running;
+  private static Set<Replica> config;
+  private static Set<Replica> pool; //set with the available replicas (not running)
+  private static Set<Replica> quarantined;
+
+  private Thread t1, t2;
+  private boolean moreInfo = true;
 
   private Controller() {
-    commands = new String[]{"vagrant up", "vagrant destroy --force", "vagrant status", "vagrant suspend ", "vagrant resume "};
+    commands = new String[]{"vagrant up --no-provision", "vagrant destroy --force",
+    "vagrant status", "vagrant halt ", "vagrant up ", "vagrant reload --provision "};
+    config = new LinkedHashSet<>();
+    pool = new LinkedHashSet<>();
   }
 
   public static Controller getController() {
@@ -39,24 +42,24 @@ public class Controller implements Runnable {
       }
       return;
     }
-    config = new HashSet<>();
-    for(Replica r : pool) {
-      r.setStatus(true);
-      config.add(r);
-    }
-    pool.clear();
-    running = true;
     System.out.println("Starting....");
     ProcessBuilder processBuilder = new ProcessBuilder();
     processBuilder.command("bash", "-c", commands[0]);
     try {
       Process process = processBuilder.start();
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-      String line;
-      while((line = reader.readLine()) != null) {
-          System.out.println(line);
+      if(moreInfo) {
+        String line;
+        while((line = reader.readLine()) != null) {
+            System.out.println(line);
+        }
       }
-
+      for(Replica r : pool) {
+        r.setStatus(true);
+        config.add(r);
+      }
+      pool.clear();
+      running = true;
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
     }catch(IOException e) {
@@ -76,7 +79,14 @@ public class Controller implements Runnable {
       }
       return;
     }
+    System.out.println("\n\nTurning off the system");
     running = false;
+    try {
+      t1.join();
+      t2.join();
+    }catch(InterruptedException e) {
+      e.printStackTrace();
+    }
     ProcessBuilder processBuilder = new ProcessBuilder();
     processBuilder.command("bash", "-c", commands[1]);
     try {
@@ -86,7 +96,6 @@ public class Controller implements Runnable {
       while((line = reader.readLine()) != null) {
           System.out.println(line);
       }
-
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
     }catch(IOException e) {
@@ -122,7 +131,6 @@ public class Controller implements Runnable {
   }
 
   public void init() {
-    pool = new HashSet<Replica>();
     try {
       FileReader fileRead = new FileReader("config.txt");
       BufferedReader br = new BufferedReader(fileRead);
@@ -130,10 +138,6 @@ public class Controller implements Runnable {
       try {
         FileWriter fileWrite = new FileWriter("Vagrantfile");
         BufferedWriter bw = new BufferedWriter(fileWrite);
-        bw.write("# -*- mode: ruby -*-");
-        bw.newLine();
-        bw.write("# vi: set ft=ruby :");
-        bw.newLine();
         bw.write("Vagrant.configure(\"2\") do |config|");
         bw.newLine();
         bw.close();
@@ -152,7 +156,15 @@ public class Controller implements Runnable {
             pool.add(new Replica(data[1]));
             bw.write("vm" + contVM + ".vm.hostname = \"" + data[1] + "\"");
             bw.newLine();
-            bw.write("vm" + contVM++ + ".vm.box = \"" + data[0] + "\"");
+            bw.write("vm" + contVM + ".vm.box = \"" + data[0] + "\"");
+            bw.newLine();
+            bw.write("vm" + contVM + ".vm.network \"private_network\", ip: \"" + data[2] + "\"");
+            bw.newLine();
+            bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
+            bw.newLine();
+            bw.write("echo \"THIS IS SUPPOSED TO BE AN UPGRADE!!\"");
+            bw.newLine();
+            bw.write("SHELL");
             bw.newLine();
             bw.write("end");
             bw.newLine();
@@ -172,10 +184,17 @@ public class Controller implements Runnable {
       }
       br.close();
       }catch(IOException e) {
-      System.out.println("A read error has occurred");
-      System.out.println("INIT config size: " + config.size());
-      System.out.println("INIT pool size: " + pool.size());
+        System.out.println("A read error has occurred");
+      }
+  }
+
+  private boolean hasMinimum() {
+    int cont = 0;
+    for(Replica r : config) {
+      if(r.getStatus()) cont++;
+      if(cont > MIN_REPLICAS_RUNNING) return true;
     }
+    return false;
   }
 
   //Monitor function -> still in progress...
@@ -188,72 +207,99 @@ public class Controller implements Runnable {
     }
   }*/
 
-  @Override
   public void run() {
+    System.out.println("\n\nSTART config size: " + config.size());
+    System.out.println("START pool size: " + pool.size());
+    System.out.print(">>>>");
+    t1 = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          removeReplica();
+        }catch(InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    t2 = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          addReplica();
+        }catch(InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    //while(isRunning()) {
+      t1.start();
+      t2.start();
+      /*try {
+        t1.join();
+        t2.join();
+      }catch(InterruptedException e) {
+        e.printStackTrace();
+      }*/
+    //}
+    /*t1.interrupt();
+    t2.interrupt();*/
+  }
+
+  private void removeReplica() throws InterruptedException {
     while(isRunning()) {
-      try {
-        Thread.sleep(5000);
-      }catch(Exception e) {
-         System.out.println(e);
-      }
-      int enter = ThreadLocalRandom.current().nextInt(1, 2 + 1);
-      String nome = "";
-      switch(enter) {
-        case 1: if(config.size() > 1) {
-          int repToRem = ThreadLocalRandom.current().nextInt(1, Replica.getNumberReplicas() + 1);
-          for(Replica r : config) {
-            if(r.getId() == repToRem) {
-              r.setStatus(false);
-              nome = r.getName();
-              pool.add(r);
-              config.remove(r);
-              removeReplica(r.getName());
-              System.out.println("\n\nRemoved one replica (" + nome + ")");
-              System.out.println("config size: " + config.size());
-              System.out.println("pool size: " + pool.size());
-              System.out.print(">>>>");
-              break;
-            }
+      for(Replica r : config) {
+        synchronized(this) {
+          while(config.size() <= MIN_REPLICAS_RUNNING) wait();
+        }
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        processBuilder.command("bash", "-c", commands[3] + r.getName());
+        try {
+          Process process = processBuilder.start();
+          process.waitFor();
+          System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
+          r.setStatus(false);
+          pool.add(r);
+          synchronized(this) {
+            notify();
           }
-        }break;
-        case 2: if(pool.size() > 0) {
-          int repToRem = ThreadLocalRandom.current().nextInt(1, Replica.getNumberReplicas() + 1);
-          for(Replica r : pool) {
-            if(r.getId() == repToRem) {
-              r.setStatus(false);
-              nome = r.getName();
-              config.add(r);
-              pool.remove(r);
-              addReplica(r.getName());
-              System.out.println("\n\nAdded one replica (" + nome + ")");
-              System.out.println("config size: " + config.size());
-              System.out.println("pool size: " + pool.size());
-              System.out.print(">>>>");
-              break;
-            }
-          }
-        }break;
+          config.remove(r);
+          System.out.println("\nconfig size: " + config.size());
+          System.out.println("pool size: " + pool.size());
+          System.out.print(">>>>");
+          break;
+        }catch(IOException e) {
+          e.printStackTrace();
+        }
       }
     }
   }
 
-  public void removeReplica(String rep) {
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command("bash", "-c", commands[3] + rep);
-    try {
-      Process process = processBuilder.start();
-    }catch(IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public void addReplica(String rep) {
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command("bash", "-c", commands[4] + rep);
-    try {
-      Process process = processBuilder.start();
-    }catch(IOException e) {
-      e.printStackTrace();
+  private void addReplica() throws InterruptedException {
+    while(isRunning()) {
+      synchronized(this) {
+        while(pool.isEmpty()) wait();
+      }
+      for(Replica r : pool) {
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        processBuilder.command("bash", "-c", commands[4] + r.getName());
+        try {
+          Process process = processBuilder.start();
+          process.waitFor();
+          System.out.println("\n\nAdded one replica (" + r.getName() + ")");
+          r.setStatus(true);
+          config.add(r);
+          synchronized(this) {
+            if(config.size() > MIN_REPLICAS_RUNNING) notify();
+          }
+          pool.remove(r);
+          System.out.println("\nconfig size: " + config.size());
+          System.out.println("pool size: " + pool.size());
+          System.out.print(">>>>");
+          break;
+        }catch(IOException e) {
+          e.printStackTrace();
+        }
+      }
     }
   }
 }
