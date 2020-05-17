@@ -4,12 +4,13 @@ import java.lang.Thread;
 
 public class Controller implements Runnable {
   //private static final int THRESHOLD = ???;
+  //specify the minimum number of replicas that should be running no matter what
   private static final int MIN_REPLICAS_RUNNING = 1;
 
   private static Controller controller = null;
   private static String[] commands;
   private static boolean running;
-  private static Set<Replica> config;
+  private static Set<Replica> config; //set with running replicas
   private static Set<Replica> pool; //set with the available replicas (not running)
   private static Set<Replica> quarantined;
 
@@ -36,13 +37,13 @@ public class Controller implements Runnable {
     if(isRunning()) {
       System.out.println("System already running.");
       try {
-		      Thread.sleep(3000);
+		      Thread.sleep(3000); //small pause to keep message on console before menu() clears screen
 	    }catch(Exception e) {
 		      System.out.println(e);
       }
       return;
     }
-    System.out.println("Starting....");
+    System.out.println("\n\nStarting....\n");
     ProcessBuilder processBuilder = new ProcessBuilder();
     processBuilder.command("bash", "-c", commands[0]);
     try {
@@ -50,9 +51,7 @@ public class Controller implements Runnable {
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
       if(moreInfo) {
         String line;
-        while((line = reader.readLine()) != null) {
-            System.out.println(line);
-        }
+        while((line = reader.readLine()) != null) System.out.println(line);
       }
       for(Replica r : pool) {
         r.setStatus(true);
@@ -79,8 +78,9 @@ public class Controller implements Runnable {
       }
       return;
     }
-    System.out.println("\n\nTurning off the system");
+    System.out.println("\n\nTurning off the system...");
     running = false;
+    System.out.println("Waiting for threads to finish...stand by...");
     try {
       t1.join();
       t2.join();
@@ -93,9 +93,7 @@ public class Controller implements Runnable {
       Process process = processBuilder.start();
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
       String line;
-      while((line = reader.readLine()) != null) {
-          System.out.println(line);
-      }
+      while((line = reader.readLine()) != null) System.out.println(line);
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
     }catch(IOException e) {
@@ -112,10 +110,7 @@ public class Controller implements Runnable {
       Process process = processBuilder.start();
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
       String line;
-      while((line = reader.readLine()) != null) {
-          System.out.println(line);
-      }
-
+      while((line = reader.readLine()) != null) System.out.println(line);
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
     }catch(IOException e) {
@@ -125,9 +120,9 @@ public class Controller implements Runnable {
     }
     String input;
     do {
-      System.out.print("Continue? (y): ");
+      System.out.print("Continue? (Y/y): ");
       input = stdin.next();
-    }while(!input.equals("y"));
+    }while(!input.equals("y") && !input.equals("Y"));
   }
 
   public void init() {
@@ -162,8 +157,10 @@ public class Controller implements Runnable {
             bw.newLine();
             bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
             bw.newLine();
-            bw.write("echo \"THIS IS SUPPOSED TO BE AN UPGRADE!!\"");
-            bw.newLine();
+            for(int i=3; i<data.length; i++) {
+              bw.write(data[i]);
+              bw.newLine();
+            }
             bw.write("SHELL");
             bw.newLine();
             bw.write("end");
@@ -231,18 +228,8 @@ public class Controller implements Runnable {
         }
       }
     });
-    //while(isRunning()) {
-      t1.start();
-      t2.start();
-      /*try {
-        t1.join();
-        t2.join();
-      }catch(InterruptedException e) {
-        e.printStackTrace();
-      }*/
-    //}
-    /*t1.interrupt();
-    t2.interrupt();*/
+    t1.start();
+    t2.start();
   }
 
   private void removeReplica() throws InterruptedException {

@@ -1,18 +1,27 @@
 Vagrant.configure("2") do |config|
-config.vm.define "ubuntu-vm" do |vm1|
-vm1.vm.hostname = "ubuntu-vm"
+config.vm.define "Ubuntu" do |vm1|
+vm1.vm.hostname = "Ubuntu"
 vm1.vm.box = "ubuntu-VAGRANTSLASH-trusty64"
 vm1.vm.network "private_network", ip: "192.168.33.10"
 vm1.vm.provision "shell", inline: <<-SHELL
-echo "THIS IS SUPPOSED TO BE AN UPGRADE!!"
+apt update
+apt upgrade
 SHELL
 end
-config.vm.define "lubuntu" do |vm2|
-vm2.vm.hostname = "lubuntu"
+config.vm.define "Lubuntu" do |vm2|
+vm2.vm.hostname = "Lubuntu"
 vm2.vm.box = "lubuntu"
 vm2.vm.network "private_network", ip: "192.168.33.11"
 vm2.vm.provision "shell", inline: <<-SHELL
-echo "THIS IS SUPPOSED TO BE AN UPGRADE!!"
+echo "ola"
+SHELL
+end
+config.vm.define "CentOS" do |vm3|
+vm3.vm.hostname = "CentOS"
+vm3.vm.box = "centOS"
+vm3.vm.network "private_network", ip: "193.168.33.12"
+vm3.vm.provision "shell", inline: <<-SHELL
+yum update
 SHELL
 end
 end
