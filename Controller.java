@@ -1,6 +1,7 @@
 import java.util.*;
 import java.io.*;
 import java.lang.Thread;
+import javax.swing.JOptionPane;
 
 public class Controller implements Runnable {
   //private static final int THRESHOLD = ???;
@@ -35,12 +36,10 @@ public class Controller implements Runnable {
 
   public void start() {
     if(isRunning()) {
-      System.out.println("System already running.");
-      try {
-		      Thread.sleep(3000); //small pause to keep message on console before menu() clears screen
-	    }catch(Exception e) {
-		      System.out.println(e);
-      }
+      Thread t = new Thread(() -> {
+        JOptionPane.showMessageDialog(null, "System already running.");
+      });
+      t.start();
       return;
     }
     System.out.println("\n\nStarting....\n");
@@ -70,12 +69,10 @@ public class Controller implements Runnable {
 
   public void stop() {
     if(!isRunning()) {
-      System.out.println("System is not running.");
-      try {
-		      Thread.sleep(3000);
-	    }catch(Exception e) {
-		      System.out.println(e);
-      }
+      Thread t = new Thread(() -> {
+        JOptionPane.showMessageDialog(null, "System is not running.");
+      });
+      t.start();
       return;
     }
     System.out.println("\n\nTurning off the system...");
@@ -118,11 +115,10 @@ public class Controller implements Runnable {
     }catch(InterruptedException e) {
       e.printStackTrace();
     }
-    String input;
-    do {
-      System.out.print("Continue? (Y/y): ");
-      input = stdin.next();
-    }while(!input.equals("y") && !input.equals("Y"));
+    System.out.println("\nPress enter to continue...");
+    try {
+      System.in.read();
+    }catch(Exception e) {}
   }
 
   public void init() {
