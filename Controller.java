@@ -15,7 +15,7 @@ public class Controller implements Runnable {
   private static Set<Replica> pool; //set with the available replicas (not running)
   private static Set<Replica> quarantined;
 
-  private Thread t1, t2;
+  private Thread t1, t2, t3;
   private boolean moreInfo = true;
 
   private Controller() {
@@ -224,8 +224,89 @@ public class Controller implements Runnable {
         }
       }
     });
-    t1.start();
-    t2.start();
+    t3 = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        File file = new File("config.txt");
+        File tempFile = new File("configTemp.txt");
+
+        //a first copy from config file is made into a temp. file
+        fileCopy(file, tempFile);
+        BufferedReader reader;
+        PrintWriter writer;
+
+        String line;
+        TimerTask task = new FileWatcher(file) {
+          protected void onChange(File file) {
+            System.out.println("\n\nA change has been made on the configuration file");
+            try {
+              if(tempFile.createNewFile() || !tempFile.createNewFile()) {
+                reader = new BufferedReader(new FileReader(file));
+                reader2 = new BufferedReader(new FileReader(tempFile));
+
+                String line = reader.readLine();
+                String line2 = reader2.readLine();
+
+                boolean areEqual = true;
+                int lineNum = 1;
+
+                while(line != null || line2 != null) {
+                  if(line == null || line2 == null) {
+                    areEqual = false;
+                    break;
+                  }
+                  else if(!line.equals(line2)) {
+                    areEqual = false;
+                    break;
+                  }
+                  line = reader.readLine();
+                  line2 = reader2.readLine();
+                  lineNum++;
+                }
+                if(!areEqual) {
+                  System.out.println("Two files have different content. They differ at line "+lineNum);
+                  System.out.println("File1 has "+line+" and File2 has "+line2+" at line "+lineNum);
+                }
+
+                reader.close();
+                reader2.close();
+              }
+            }catch(IOException e) {
+              System.out.println(e);
+            }
+            fileCopy(file, tempFile);
+          }
+        };
+
+        Timer timer = new Timer();
+        //repeat the check every second
+        timer.schedule(task, new Date(), 1000);
+      }
+    });
+    //t1.start();
+    //t2.start();
+    t3.start();
+  }
+
+  private void fileCopy(File in, File out) {
+    BufferedReader reader;
+    PrintWriter writer;
+    String line;
+    try {
+      if(out.createNewFile() || !out.createNewFile()) {
+        reader = new BufferedReader(new FileReader(in));
+        writer = new PrintWriter(new FileWriter(out));
+
+        while((line = reader.readLine()) != null) {
+          writer.println(line);
+        }
+
+        reader.close();
+        writer.close();
+      }
+    }catch(IOException e) {
+      System.out.println(e);
+    }
   }
 
   private void removeReplica() throws InterruptedException {
