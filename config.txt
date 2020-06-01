@@ -1,4 +1,4 @@
 #Box name;VM name;PrivateIP;Updates (seperated by ';')
 ubuntu-VAGRANTSLASH-trusty64;Ubuntu;192.168.33.10;apt update;apt upgrade
-lubuntu;Lubuntu;192.168.33.11;echo "ola"
-centOS;CentOS;193.168.33.12;yum update
+lubuntu;Lubuntu;192.168.33.20;echo "helllooooo"
+centOS;CentOS;192.168.33.12;yum update

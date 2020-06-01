@@ -14,15 +14,18 @@ public class Controller implements Runnable {
   private static Set<Replica> config; //set with running replicas
   private static Set<Replica> pool; //set with the available replicas (not running)
   private static Set<Replica> quarantined;
+  private static Queue<String> queue;
 
   private Thread t1, t2, t3;
   private boolean moreInfo = true;
+  private boolean firstInit = true;
 
   private Controller() {
     commands = new String[]{"vagrant up --no-provision", "vagrant destroy --force",
     "vagrant status", "vagrant halt ", "vagrant up ", "vagrant reload --provision "};
     config = new LinkedHashSet<>();
     pool = new LinkedHashSet<>();
+    queue = new LinkedList<>();
   }
 
   public static Controller getController() {
@@ -32,6 +35,67 @@ public class Controller implements Runnable {
 
   public boolean isRunning() {
     return running;
+  }
+
+  public void init() {
+    try {
+      FileReader fileRead = new FileReader("config.txt");
+      BufferedReader br = new BufferedReader(fileRead);
+      String line = "";
+      try {
+        FileWriter fileWrite = new FileWriter("Vagrantfile");
+        BufferedWriter bw = new BufferedWriter(fileWrite);
+        bw.write("Vagrant.configure(\"2\") do |config|");
+        bw.newLine();
+        bw.close();
+      }catch(IOException e) {
+        System.out.println("A write error has occurred");
+      }
+      int contVM = 1;
+      while((line = br.readLine()) != null) {
+        if(!line.startsWith("#")) {
+          try {
+            String[] data = line.split(";");
+            FileWriter fileWrite = new FileWriter("Vagrantfile", true);
+            BufferedWriter bw = new BufferedWriter(fileWrite);
+            bw.write("config.vm.define \"" + data[1] + "\" do |vm" + contVM + "|");
+            bw.newLine();
+            if(firstInit) pool.add(new Replica(data[1]));
+            bw.write("vm" + contVM + ".vm.hostname = \"" + data[1] + "\"");
+            bw.newLine();
+            bw.write("vm" + contVM + ".vm.box = \"" + data[0] + "\"");
+            bw.newLine();
+            bw.write("vm" + contVM + ".vm.network \"private_network\", ip: \"" + data[2] + "\"");
+            bw.newLine();
+            bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
+            bw.newLine();
+            for(int i=3; i<data.length; i++) {
+              bw.write(data[i]);
+              bw.newLine();
+            }
+            bw.write("SHELL");
+            bw.newLine();
+            bw.write("end");
+            bw.newLine();
+            bw.close();
+          }catch(IOException e) {
+            System.out.println("A write error has occurred");
+          }
+        }
+      }
+      try {
+        FileWriter fileWrite = new FileWriter("Vagrantfile", true);
+        BufferedWriter bw = new BufferedWriter(fileWrite);
+        bw.write("end");
+        bw.close();
+        firstInit = false;
+      }catch(IOException e) {
+        System.out.println("A write error has occurred");
+      }
+      br.close();
+    }catch(IOException e) {
+      System.out.println("A read error has occurred");
+    }
   }
 
   public void start() {
@@ -77,10 +141,11 @@ public class Controller implements Runnable {
     }
     System.out.println("\n\nTurning off the system...");
     running = false;
-    System.out.println("Waiting for threads to finish...stand by...");
+    System.out.println("\n\nWaiting for threads to finish...stand by...\n\n");
+    t1.interrupt(); t2.interrupt();
     try {
-      t1.join();
-      t2.join();
+      t1.join(5000);
+      t2.join(5000);
     }catch(InterruptedException e) {
       e.printStackTrace();
     }
@@ -93,6 +158,10 @@ public class Controller implements Runnable {
       while((line = reader.readLine()) != null) System.out.println(line);
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
+      File file = new File(".configTemp");
+      file.delete();
+      firstInit = true;
+      pool.clear(); config.clear(); queue.clear();
     }catch(IOException e) {
       e.printStackTrace();
     }catch(InterruptedException e) {
@@ -121,65 +190,6 @@ public class Controller implements Runnable {
     }catch(Exception e) {}
   }
 
-  public void init() {
-    try {
-      FileReader fileRead = new FileReader("config.txt");
-      BufferedReader br = new BufferedReader(fileRead);
-      String line = "";
-      try {
-        FileWriter fileWrite = new FileWriter("Vagrantfile");
-        BufferedWriter bw = new BufferedWriter(fileWrite);
-        bw.write("Vagrant.configure(\"2\") do |config|");
-        bw.newLine();
-        bw.close();
-      }catch(IOException e) {
-        System.out.println("A write error has occurred");
-      }
-      int contVM = 1;
-      while((line = br.readLine()) != null) {
-        if(!line.startsWith("#")) {
-          try {
-            String[] data = line.split(";");
-            FileWriter fileWrite = new FileWriter("Vagrantfile", true);
-            BufferedWriter bw = new BufferedWriter(fileWrite);
-            bw.write("config.vm.define \"" + data[1] + "\" do |vm" + contVM + "|");
-            bw.newLine();
-            pool.add(new Replica(data[1]));
-            bw.write("vm" + contVM + ".vm.hostname = \"" + data[1] + "\"");
-            bw.newLine();
-            bw.write("vm" + contVM + ".vm.box = \"" + data[0] + "\"");
-            bw.newLine();
-            bw.write("vm" + contVM + ".vm.network \"private_network\", ip: \"" + data[2] + "\"");
-            bw.newLine();
-            bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
-            bw.newLine();
-            for(int i=3; i<data.length; i++) {
-              bw.write(data[i]);
-              bw.newLine();
-            }
-            bw.write("SHELL");
-            bw.newLine();
-            bw.write("end");
-            bw.newLine();
-            bw.close();
-          }catch(IOException e) {
-            System.out.println("A write error has occurred");
-          }
-        }
-      }
-      try {
-        FileWriter fileWrite = new FileWriter("Vagrantfile", true);
-        BufferedWriter bw = new BufferedWriter(fileWrite);
-        bw.write("end");
-        bw.close();
-      }catch(IOException e) {
-        System.out.println("A write error has occurred");
-      }
-      br.close();
-      }catch(IOException e) {
-        System.out.println("A read error has occurred");
-      }
-  }
 
   private boolean hasMinimum() {
     int cont = 0;
@@ -210,7 +220,7 @@ public class Controller implements Runnable {
         try {
           removeReplica();
         }catch(InterruptedException e) {
-          e.printStackTrace();
+          System.out.println("1st Thread interrupted...");
         }
       }
     });
@@ -220,7 +230,7 @@ public class Controller implements Runnable {
         try {
           addReplica();
         }catch(InterruptedException e) {
-          e.printStackTrace();
+          System.out.println("2nd Thread interrupted...");
         }
       }
     });
@@ -228,7 +238,7 @@ public class Controller implements Runnable {
       @Override
       public void run() {
         File file = new File("config.txt");
-        File tempFile = new File("configTemp.txt");
+        File tempFile = new File(".configTemp");
 
         //a first copy from config file is made into a temp. file
         fileCopy(file, tempFile);
@@ -239,6 +249,8 @@ public class Controller implements Runnable {
         TimerTask task = new FileWatcher(file) {
           protected void onChange(File file) {
             System.out.println("\n\nA change has been made on the configuration file");
+            System.out.print(">>>>");
+            init();
             try {
               if(tempFile.createNewFile() || !tempFile.createNewFile()) {
                 reader = new BufferedReader(new FileReader(file));
@@ -246,26 +258,20 @@ public class Controller implements Runnable {
 
                 String line = reader.readLine();
                 String line2 = reader2.readLine();
-
-                boolean areEqual = true;
                 int lineNum = 1;
 
-                while(line != null || line2 != null) {
-                  if(line == null || line2 == null) {
-                    areEqual = false;
-                    break;
+                while(line != null && line2 != null) {
+                  if(!line.equals(line2) && lineNum != 1 && line != null && line2 != null) {
+                    String[] data = line2.split(";");
+                    if(isRunning()) queue.add(data[1]);
                   }
-                  else if(!line.equals(line2)) {
-                    areEqual = false;
-                    break;
+                  else if(!line.equals(line2) && lineNum != 1 && line != null && line2 == null) {
+                    String[] data = line2.split(";");
+                    if(isRunning()) pool.add(new Replica(data[1]));
                   }
                   line = reader.readLine();
                   line2 = reader2.readLine();
                   lineNum++;
-                }
-                if(!areEqual) {
-                  System.out.println("Two files have different content. They differ at line "+lineNum);
-                  System.out.println("File1 has "+line+" and File2 has "+line2+" at line "+lineNum);
                 }
 
                 reader.close();
@@ -281,10 +287,11 @@ public class Controller implements Runnable {
         Timer timer = new Timer();
         //repeat the check every second
         timer.schedule(task, new Date(), 1000);
+
       }
     });
-    //t1.start();
-    //t2.start();
+    t1.start();
+    t2.start();
     t3.start();
   }
 
@@ -310,36 +317,41 @@ public class Controller implements Runnable {
   }
 
   private void removeReplica() throws InterruptedException {
-    while(isRunning()) {
-      for(Replica r : config) {
-        synchronized(this) {
-          while(config.size() <= MIN_REPLICAS_RUNNING) wait();
-        }
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command("bash", "-c", commands[3] + r.getName());
-        try {
-          Process process = processBuilder.start();
-          process.waitFor();
-          System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
-          r.setStatus(false);
-          pool.add(r);
-          synchronized(this) {
-            notify();
+    while(!Thread.currentThread().isInterrupted()) {
+      synchronized(this) {
+        while(config.size() <= MIN_REPLICAS_RUNNING) wait();
+      }
+      if(queue.size() > 0) {
+        String name = queue.remove();
+        for(Replica r : config) {
+          if(r.getName().equals(name)) {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("bash", "-c", commands[3] + name);
+            try {
+              Process process = processBuilder.start();
+              process.waitFor();
+              System.out.println("\n\nRemoved one replica (" + name + ")");
+              r.setStatus(false);
+              pool.add(r);
+              synchronized(this) {
+                notify();
+              }
+              config.remove(r);
+              System.out.println("\nconfig size: " + config.size());
+              System.out.println("pool size: " + pool.size());
+              System.out.print(">>>>");
+              break;
+            }catch(IOException e) {
+              e.printStackTrace();
+            }
           }
-          config.remove(r);
-          System.out.println("\nconfig size: " + config.size());
-          System.out.println("pool size: " + pool.size());
-          System.out.print(">>>>");
-          break;
-        }catch(IOException e) {
-          e.printStackTrace();
         }
       }
     }
   }
 
   private void addReplica() throws InterruptedException {
-    while(isRunning()) {
+    while(!Thread.currentThread().isInterrupted()) {
       synchronized(this) {
         while(pool.isEmpty()) wait();
       }
@@ -349,7 +361,7 @@ public class Controller implements Runnable {
         try {
           Process process = processBuilder.start();
           process.waitFor();
-          System.out.println("\n\nAdded one replica (" + r.getName() + ")");
+          System.out.println("\n\n" + r.getName() + " updated!");
           r.setStatus(true);
           config.add(r);
           synchronized(this) {

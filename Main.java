@@ -1,4 +1,5 @@
 import java.util.Scanner;
+import java.io.*;
 
 public class Main {
 
@@ -31,7 +32,7 @@ public class Main {
           case 1: controller = Controller.getController(); controller.start(); Thread t = new Thread(Controller.getController()); t.start(); menu(); break;
           case 2: controller = Controller.getController(); controller.status(stdin); menu(); break;
           case 3: controller = Controller.getController(); controller.stop(); menu(); break;
-          case 4: System.exit(0); //return;
+          case 4: File file = new File(".configTemp"); file.delete(); System.exit(0);
           default: menu();
         }
       }catch(Exception e) {

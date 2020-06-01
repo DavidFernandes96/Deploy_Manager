@@ -11,15 +11,15 @@ end
 config.vm.define "Lubuntu" do |vm2|
 vm2.vm.hostname = "Lubuntu"
 vm2.vm.box = "lubuntu"
-vm2.vm.network "private_network", ip: "192.168.33.11"
+vm2.vm.network "private_network", ip: "192.168.33.20"
 vm2.vm.provision "shell", inline: <<-SHELL
-echo "ola"
+echo "helllooooo"
 SHELL
 end
 config.vm.define "CentOS" do |vm3|
 vm3.vm.hostname = "CentOS"
 vm3.vm.box = "centOS"
-vm3.vm.network "private_network", ip: "193.168.33.12"
+vm3.vm.network "private_network", ip: "192.168.33.12"
 vm3.vm.provision "shell", inline: <<-SHELL
 yum update
 SHELL
