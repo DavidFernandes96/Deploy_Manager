@@ -28,21 +28,15 @@ public class Update implements Runnable {
 
       @Override
       public void run() {
-        for(Replica r : controller.config) {
-          while(controller.queue.size() == 0 && controller.config.size() <= controller.minReplicasRunning) {}
-          controller.config.add(backupReplica);
-          System.out.println("\n\n added backup replicaaaaaa");
-          r.setToUpdate(true);
-          controller.queue.add(r);
-          //synchronized(backupReplica) {
-            while(controller.config.contains(backupReplica)) {
-              /*try {
-                wait();
-              }catch(InterruptedException e) {}*/
-            }
-          //}
-          System.out.println("\n\n reached here!");
-          //controller.config.remove(backupReplica);
+        for(int i=0; i<Replica.getNumberReplicas(); i++) {
+          for(Replica r : controller.getConfig()) {
+            while(controller.getQueueSize() == 0 && controller.getConfig().size() <= controller.getMinReplicasRunning()) {}
+            controller.addToConfig(backupReplica);
+            r.setToUpdate(true);
+            controller.addToQueue(r);
+            break;
+          }
+          while(controller.getConfig().contains(backupReplica)) {}
         }
       };
 

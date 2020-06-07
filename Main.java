@@ -29,10 +29,12 @@ public class Main {
       try {
         opt = stdin.nextInt();
         switch(opt) {
-          case 1: { controller = Controller.getController();
+          case 1: {
+            controller = Controller.getController();
             controller.start();
             Thread t1 = new Thread(Controller.getController()); t1.start();
             Thread t2 = new Thread(new Update()); t2.start();
+            Thread t3 = new Thread(new Configuration()); t3.start();
             menu(); break;
           }
           case 2: controller = Controller.getController(); controller.statusV2(stdin); menu(); break;

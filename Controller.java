@@ -6,15 +6,15 @@ import javax.swing.JOptionPane;
 public class Controller implements Runnable {
 
   //specify the minimum number of replicas that should be running no matter what
-  public static int minReplicasRunning;
+  private static int minReplicasRunning;
   private static Controller controller = null;
   private static String[] commands;
   private static boolean running;
-  public static Set<Replica> config; //set with running replicas
+  private static Set<Replica> config; //set with running replicas
   private static Set<Replica> pool; //set with the available replicas (not running)
-  public static Queue<Replica> queue;
+  private static Queue<Replica> queue;
 
-  private Thread t1, t2, t3;
+  private Thread t1, t2;
   private boolean moreInfo = true;
   private boolean firstInit = true;
 
@@ -26,6 +26,10 @@ public class Controller implements Runnable {
     queue = new LinkedList<>();
   }
 
+  public static int getMinReplicasRunning() {
+    return minReplicasRunning;
+  }
+
   public static Controller getController() {
     if(controller == null) return controller = new Controller();
     else return controller;
@@ -33,6 +37,26 @@ public class Controller implements Runnable {
 
   public boolean isRunning() {
     return running;
+  }
+
+  public static Set<Replica> getConfig() {
+    return config;
+  }
+
+  public static void addToConfig(Replica replica) {
+    config.add(replica);
+  }
+
+  public static void addToPool(Replica replica) {
+    pool.add(replica);
+  }
+
+  public static void addToQueue(Replica replica) {
+    queue.add(replica);
+  }
+
+  public static int getQueueSize() {
+    return queue.size();
   }
 
   public void init() {
@@ -66,7 +90,7 @@ public class Controller implements Runnable {
             bw.write("vm" + contVM + ".vm.network \"private_network\", ip: \"" + data[2] + "\"");
             bw.newLine();
             if(data.length > 3) {
-              bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
+              bw.write("vm" + contVM + ".vm.provision \"shell\", inline: <<-SHELL");
               bw.newLine();
               for(int i=3; i<data.length; i++) {
                 bw.write(data[i]);
@@ -78,6 +102,7 @@ public class Controller implements Runnable {
             bw.write("end");
             bw.newLine();
             bw.close();
+            contVM++;
           }catch(IOException e) {
             System.out.println("A write error has occurred");
           }
@@ -89,8 +114,6 @@ public class Controller implements Runnable {
           for(Replica r : pool) {
             pool.remove(r);
             Update.setBackupReplica(r);
-            System.out.println("\n\n" + r.getName() + " is the backup replica");
-            System.out.print(">>>>");
             break;
           }
         }
@@ -247,96 +270,8 @@ public class Controller implements Runnable {
         }
       }
     });
-    t3 = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        File file = new File("config.txt");
-        File tempFile = new File(".configTemp");
-
-        //a first copy from config file is made into a temp. file
-        fileCopy(file, tempFile);
-        BufferedReader reader;
-        PrintWriter writer;
-
-        String line;
-        TimerTask task = new FileWatcher(file) {
-          protected void onChange(File file) {
-            System.out.println("\n\nA change has been made on the configuration file");
-            System.out.print(">>>>");
-            init();
-            try {
-              if(tempFile.createNewFile() || !tempFile.createNewFile()) {
-                reader = new BufferedReader(new FileReader(file));
-                reader2 = new BufferedReader(new FileReader(tempFile));
-
-                String line = reader.readLine();
-                String line2 = reader2.readLine();
-                int lineNum = 1;
-
-                while(line != null || line2 != null) {
-                  if(!line.equals(line2) && lineNum != 1 && line != null && line2 != null) {
-                    String[] dataFile = line.split(";");
-                    String[] dataTemp = line2.split(";");
-                    if(!dataFile[1].equals(dataTemp[1])) Replica.changeName(dataTemp[1], dataFile[1]);
-                    if(isRunning()) queue.add(Replica.getReplica(dataFile[1]));
-                  }
-                  //replica addition
-                  else if(!line.equals(line2) && lineNum != 1 && line != null && line2 == null) {
-                    String[] dataFile = line.split(";");
-                    if(isRunning()) pool.add(new Replica(dataFile[1]));
-                  }
-                  //replica removal
-                  else if(!line.equals(line2) && lineNum != 1 && line == null && line2 != null) {
-                    String[] dataTemp = line2.split(";");
-                    Replica replica = Replica.getReplica(dataTemp[1]);
-                    replica.setToDestroy();
-                    if(isRunning()) queue.add(replica);
-                  }
-                  line = reader.readLine();
-                  line2 = reader2.readLine();
-                  lineNum++;
-                }
-
-                reader.close();
-                reader2.close();
-              }
-            }catch(IOException e) {
-              System.out.println(e);
-            }
-            fileCopy(file, tempFile);
-          }
-        };
-
-        Timer timer = new Timer();
-        //repeat the check every second
-        timer.schedule(task, new Date(), 1000);
-
-      }
-    });
     t1.start();
     t2.start();
-    t3.start();
-  }
-
-  private void fileCopy(File in, File out) {
-    BufferedReader reader;
-    PrintWriter writer;
-    String line;
-    try {
-      if(out.createNewFile() || !out.createNewFile()) {
-        reader = new BufferedReader(new FileReader(in));
-        writer = new PrintWriter(new FileWriter(out));
-
-        while((line = reader.readLine()) != null) {
-          writer.println(line);
-        }
-
-        reader.close();
-        writer.close();
-      }
-    }catch(IOException e) {
-      System.out.println(e);
-    }
   }
 
   private void removeReplica() throws InterruptedException {
@@ -347,17 +282,22 @@ public class Controller implements Runnable {
           if(r == replica) {
             ProcessBuilder processBuilder = new ProcessBuilder();
             if(r.toDestroy()) {
-              processBuilder.command("bash", "-c", commands[1] + r.getName());
-              r.destroyReplica(r.getName());
+              processBuilder.command("bash", "-c", commands[1] + " " + r.getName());
             }
             else processBuilder.command("bash", "-c", commands[3] + r.getName());
             try {
               Process process = processBuilder.start();
               process.waitFor();
-              System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
-              r.setStatus(false);
-              pool.add(r);
-              config.remove(r);
+              if(r.toDestroy()) {
+                System.out.println("\n\n" + r.getName() + " was destroyed.");
+                r.destroyReplica(r.getName());
+              }
+              else {
+                System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
+                r.setStatus(false);
+                pool.add(r);
+                config.remove(r);
+              }
               System.out.println("\nconfig size: " + config.size());
               System.out.println("pool size: " + pool.size());
               System.out.print(">>>>");
@@ -382,9 +322,6 @@ public class Controller implements Runnable {
             process.waitFor();
             if(r.toUpdate()) {
               config.remove(Update.getBackupReplica());
-              /*synchronized(Update.getBackupReplica()) {
-                notify();
-              }*/
               r.setToUpdate(false);
             }
             if(r.isNew()) {
