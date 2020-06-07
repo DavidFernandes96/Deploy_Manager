@@ -29,8 +29,13 @@ public class Main {
       try {
         opt = stdin.nextInt();
         switch(opt) {
-          case 1: controller = Controller.getController(); controller.start(); Thread t = new Thread(Controller.getController()); t.start(); menu(); break;
-          case 2: controller = Controller.getController(); controller.status(stdin); menu(); break;
+          case 1: { controller = Controller.getController();
+            controller.start();
+            Thread t1 = new Thread(Controller.getController()); t1.start();
+            Thread t2 = new Thread(new Update()); t2.start();
+            menu(); break;
+          }
+          case 2: controller = Controller.getController(); controller.statusV2(stdin); menu(); break;
           case 3: controller = Controller.getController(); controller.stop(); menu(); break;
           case 4: File file = new File(".configTemp"); file.delete(); System.exit(0);
           default: menu();

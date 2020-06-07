@@ -3,13 +3,19 @@ import java.util.*;
 public class Replica {
   private String name;
   private boolean status;
-  private int id;
-  private static int numberReplicas = 0;
+  private static Map<String, Replica> map = new HashMap<>();
+  private static int numberReplicas = -1;
+  private boolean newReplica;
+  private boolean destroy;
+  private boolean update;
 
   public Replica(String name) {
     this.name = name;
+    map.put(name, this);
+    newReplica = true;
+    destroy = false;
+    update = false;
     numberReplicas++;
-    this.id = numberReplicas;
   }
 
   public void setName(String name) {
@@ -32,7 +38,42 @@ public class Replica {
     return numberReplicas;
   }
 
-  public int getId() {
-    return this.id;
+  public static Replica getReplica(String name) {
+    return map.get(name);
   }
+
+  public static void changeName(String oldName, String newName) {
+    Replica replica = map.remove(oldName);
+    map.put(newName, replica);
+  }
+
+  public void destroyReplica(String name) {
+    Replica replica = map.remove(name);
+    numberReplicas--;
+  }
+
+  public boolean isNew() {
+    return this.newReplica;
+  }
+
+  public void setNew(boolean bValue) {
+    this.newReplica = bValue;
+  }
+
+  public boolean toDestroy() {
+    return destroy;
+  }
+
+  public void setToDestroy() {
+    this.destroy = true;
+  }
+
+  public boolean toUpdate() {
+    return this.update;
+  }
+
+  public void setToUpdate(boolean bValue) {
+    this.update = bValue;
+  }
+
 }

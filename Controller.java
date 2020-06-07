@@ -4,17 +4,15 @@ import java.lang.Thread;
 import javax.swing.JOptionPane;
 
 public class Controller implements Runnable {
-  //private static final int THRESHOLD = ???;
-  //specify the minimum number of replicas that should be running no matter what
-  private static final int MIN_REPLICAS_RUNNING = 1;
 
+  //specify the minimum number of replicas that should be running no matter what
+  public static int minReplicasRunning;
   private static Controller controller = null;
   private static String[] commands;
   private static boolean running;
-  private static Set<Replica> config; //set with running replicas
+  public static Set<Replica> config; //set with running replicas
   private static Set<Replica> pool; //set with the available replicas (not running)
-  private static Set<Replica> quarantined;
-  private static Queue<String> queue;
+  public static Queue<Replica> queue;
 
   private Thread t1, t2, t3;
   private boolean moreInfo = true;
@@ -67,14 +65,16 @@ public class Controller implements Runnable {
             bw.newLine();
             bw.write("vm" + contVM + ".vm.network \"private_network\", ip: \"" + data[2] + "\"");
             bw.newLine();
-            bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
-            bw.newLine();
-            for(int i=3; i<data.length; i++) {
-              bw.write(data[i]);
+            if(data.length > 3) {
+              bw.write("vm" + contVM++ + ".vm.provision \"shell\", inline: <<-SHELL");
+              bw.newLine();
+              for(int i=3; i<data.length; i++) {
+                bw.write(data[i]);
+                bw.newLine();
+              }
+              bw.write("SHELL");
               bw.newLine();
             }
-            bw.write("SHELL");
-            bw.newLine();
             bw.write("end");
             bw.newLine();
             bw.close();
@@ -84,6 +84,18 @@ public class Controller implements Runnable {
         }
       }
       try {
+        //grab the backup replica
+        if(firstInit) {
+          for(Replica r : pool) {
+            pool.remove(r);
+            Update.setBackupReplica(r);
+            System.out.println("\n\n" + r.getName() + " is the backup replica");
+            System.out.print(">>>>");
+            break;
+          }
+        }
+        minReplicasRunning = (Replica.getNumberReplicas() - ((Replica.getNumberReplicas() - 1) / 3)) != Replica.getNumberReplicas() ?
+          (Replica.getNumberReplicas() - ((Replica.getNumberReplicas() - 1) / 3)) : Replica.getNumberReplicas() - 1;
         FileWriter fileWrite = new FileWriter("Vagrantfile", true);
         BufferedWriter bw = new BufferedWriter(fileWrite);
         bw.write("end");
@@ -108,7 +120,7 @@ public class Controller implements Runnable {
     }
     System.out.println("\n\nStarting....\n");
     ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command("bash", "-c", commands[0]);
+    processBuilder.command("bash", "-c", commands[4]);
     try {
       Process process = processBuilder.start();
       BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -118,6 +130,7 @@ public class Controller implements Runnable {
       }
       for(Replica r : pool) {
         r.setStatus(true);
+        r.setNew(false);
         config.add(r);
       }
       pool.clear();
@@ -158,8 +171,7 @@ public class Controller implements Runnable {
       while((line = reader.readLine()) != null) System.out.println(line);
       int exitCode = process.waitFor();
       System.out.println("\nExited with error code : " + exitCode);
-      File file = new File(".configTemp");
-      file.delete();
+      File file = new File(".configTemp"); file.delete();
       firstInit = true;
       pool.clear(); config.clear(); queue.clear();
     }catch(IOException e) {
@@ -190,25 +202,26 @@ public class Controller implements Runnable {
     }catch(Exception e) {}
   }
 
+  public void statusV2(Scanner stdin) {
+    System.out.println("\n\nReplicas running: ");
+    for(Replica r : config) System.out.println("* " + r.getName());
+    System.out.println("\n\nReplicas on the pool: ");
+    for(Replica r : pool) System.out.println("* " + r.getName());
+    System.out.println("\nPress enter to continue...");
+    try {
+      System.in.read();
+    }catch(Exception e) {}
+  }
+
 
   private boolean hasMinimum() {
     int cont = 0;
     for(Replica r : config) {
       if(r.getStatus()) cont++;
-      if(cont > MIN_REPLICAS_RUNNING) return true;
+      if(cont > minReplicasRunning) return true;
     }
     return false;
   }
-
-  //Monitor function -> still in progress...
-  /*public void monitor() {
-    //config -> set of replicas executing
-    if(risk(config)) >= THRESHOLD {
-      for(Replica r : poll) {
-
-      }
-    }
-  }*/
 
   public void run() {
     System.out.println("\n\nSTART config size: " + config.size());
@@ -260,14 +273,24 @@ public class Controller implements Runnable {
                 String line2 = reader2.readLine();
                 int lineNum = 1;
 
-                while(line != null && line2 != null) {
+                while(line != null || line2 != null) {
                   if(!line.equals(line2) && lineNum != 1 && line != null && line2 != null) {
-                    String[] data = line2.split(";");
-                    if(isRunning()) queue.add(data[1]);
+                    String[] dataFile = line.split(";");
+                    String[] dataTemp = line2.split(";");
+                    if(!dataFile[1].equals(dataTemp[1])) Replica.changeName(dataTemp[1], dataFile[1]);
+                    if(isRunning()) queue.add(Replica.getReplica(dataFile[1]));
                   }
+                  //replica addition
                   else if(!line.equals(line2) && lineNum != 1 && line != null && line2 == null) {
-                    String[] data = line2.split(";");
-                    if(isRunning()) pool.add(new Replica(data[1]));
+                    String[] dataFile = line.split(";");
+                    if(isRunning()) pool.add(new Replica(dataFile[1]));
+                  }
+                  //replica removal
+                  else if(!line.equals(line2) && lineNum != 1 && line == null && line2 != null) {
+                    String[] dataTemp = line2.split(";");
+                    Replica replica = Replica.getReplica(dataTemp[1]);
+                    replica.setToDestroy();
+                    if(isRunning()) queue.add(replica);
                   }
                   line = reader.readLine();
                   line2 = reader2.readLine();
@@ -318,24 +341,22 @@ public class Controller implements Runnable {
 
   private void removeReplica() throws InterruptedException {
     while(!Thread.currentThread().isInterrupted()) {
-      synchronized(this) {
-        while(config.size() <= MIN_REPLICAS_RUNNING) wait();
-      }
-      if(queue.size() > 0) {
-        String name = queue.remove();
+      if(queue.size() > 0 && config.size() > minReplicasRunning) {
+        Replica replica = queue.remove();
         for(Replica r : config) {
-          if(r.getName().equals(name)) {
+          if(r == replica) {
             ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command("bash", "-c", commands[3] + name);
+            if(r.toDestroy()) {
+              processBuilder.command("bash", "-c", commands[1] + r.getName());
+              r.destroyReplica(r.getName());
+            }
+            else processBuilder.command("bash", "-c", commands[3] + r.getName());
             try {
               Process process = processBuilder.start();
               process.waitFor();
-              System.out.println("\n\nRemoved one replica (" + name + ")");
+              System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
               r.setStatus(false);
               pool.add(r);
-              synchronized(this) {
-                notify();
-              }
               config.remove(r);
               System.out.println("\nconfig size: " + config.size());
               System.out.println("pool size: " + pool.size());
@@ -352,28 +373,35 @@ public class Controller implements Runnable {
 
   private void addReplica() throws InterruptedException {
     while(!Thread.currentThread().isInterrupted()) {
-      synchronized(this) {
-        while(pool.isEmpty()) wait();
-      }
-      for(Replica r : pool) {
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command("bash", "-c", commands[4] + r.getName());
-        try {
-          Process process = processBuilder.start();
-          process.waitFor();
-          System.out.println("\n\n" + r.getName() + " updated!");
-          r.setStatus(true);
-          config.add(r);
-          synchronized(this) {
-            if(config.size() > MIN_REPLICAS_RUNNING) notify();
+      if(!pool.isEmpty()) {
+        for(Replica r : pool) {
+          ProcessBuilder processBuilder = new ProcessBuilder();
+          processBuilder.command("bash", "-c", commands[4] + r.getName());
+          try {
+            Process process = processBuilder.start();
+            process.waitFor();
+            if(r.toUpdate()) {
+              config.remove(Update.getBackupReplica());
+              /*synchronized(Update.getBackupReplica()) {
+                notify();
+              }*/
+              r.setToUpdate(false);
+            }
+            if(r.isNew()) {
+              System.out.println("\n\n" + r.getName() + " was added to the configuration!");
+              r.setNew(false);
+            }
+            else System.out.println("\n\n" + r.getName() + " updated!");
+            r.setStatus(true);
+            config.add(r);
+            pool.remove(r);
+            System.out.println("\nconfig size: " + config.size());
+            System.out.println("pool size: " + pool.size());
+            System.out.print(">>>>");
+            break;
+          }catch(IOException e) {
+            e.printStackTrace();
           }
-          pool.remove(r);
-          System.out.println("\nconfig size: " + config.size());
-          System.out.println("pool size: " + pool.size());
-          System.out.print(">>>>");
-          break;
-        }catch(IOException e) {
-          e.printStackTrace();
         }
       }
     }
