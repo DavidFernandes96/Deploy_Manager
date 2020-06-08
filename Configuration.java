@@ -25,7 +25,6 @@ public class Configuration implements Runnable {
       protected void onChange(File file) {
         System.out.println("\n\nA change has been made on the configuration file");
         System.out.print(">>>>");
-        controller.init();
         try {
           if(tempFile.createNewFile() || !tempFile.createNewFile()) {
             reader = new BufferedReader(new FileReader(file));
@@ -39,8 +38,26 @@ public class Configuration implements Runnable {
                 !line.equals(line2) && !line.startsWith("#") && !line2.startsWith("#")) {
                 String[] dataFile = line.split(";");
                 String[] dataTemp = line2.split(";");
-                if(!dataFile[1].equals(dataTemp[1])) Replica.changeName(dataTemp[1], dataFile[1]);
-                if(controller.isRunning()) controller.addToQueue(Replica.getReplica(dataFile[1]));
+                if(dataFile[0].equals(dataTemp[0])) {
+                  if(controller.isRunning()) controller.addToQueue(Replica.getReplica(dataFile[1]));
+                }
+                //replica removal
+                else {
+                  if(controller.isRunning()) {
+                    ProcessBuilder processBuilder = new ProcessBuilder();
+                    processBuilder.command("bash", "-c", controller.commands[1] + " " + Replica.getReplica(dataTemp[1]).getName());
+                    Process process = processBuilder.start();
+                    try {
+                      process.waitFor();
+                      String name = Replica.getReplica(dataTemp[1]).getName();
+                      controller.getConfig().remove(Replica.getReplica(name));
+                      Replica.getReplica(name).destroyReplica(name);
+                      System.out.println("\n\n" + name + " was destroyed.");
+                      System.out.print(">>>>");
+                      break;
+                    }catch(InterruptedException e) {}
+                  }
+                }
               }
               //replica addition
               else if(line != null && line2 == null && !line.startsWith("#")) {
@@ -50,9 +67,19 @@ public class Configuration implements Runnable {
               //replica removal
               else if(line == null && line2 != null && !line2.startsWith("#")) {
                 String[] dataTemp = line2.split(";");
-                Replica replica = Replica.getReplica(dataTemp[1]);
-                replica.setToDestroy();
-                if(controller.isRunning()) controller.addToQueue(replica);
+                if(controller.isRunning()) {
+                  ProcessBuilder processBuilder = new ProcessBuilder();
+                  processBuilder.command("bash", "-c", controller.commands[1] + " " + Replica.getReplica(dataTemp[1]).getName());
+                  Process process = processBuilder.start();
+                  try {
+                    process.waitFor();
+                    String name = Replica.getReplica(dataTemp[1]).getName();
+                    controller.getConfig().remove(Replica.getReplica(name));
+                    Replica.getReplica(name).destroyReplica(name);
+                    System.out.println("\n\n" + name + " was destroyed.");
+                    System.out.print(">>>>");
+                  }catch(InterruptedException e) {}
+                }
               }
               line = reader.readLine();
               line2 = reader2.readLine();
@@ -61,6 +88,7 @@ public class Configuration implements Runnable {
             reader.close();
             reader2.close();
           }
+          controller.init();
         }catch(IOException e) {
           System.out.println(e);
         }
@@ -69,8 +97,8 @@ public class Configuration implements Runnable {
     };
 
     Timer timer = new Timer();
-    //repeat the check every second
-    timer.schedule(task, new Date(), 1000);
+    //repeat the check every 2 seconds
+    timer.schedule(task, new Date(), 2000);
   }
 
   private void fileCopy(File in, File out) {

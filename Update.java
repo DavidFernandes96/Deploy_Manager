@@ -5,7 +5,7 @@ import javax.swing.JOptionPane;
 import java.util.concurrent.TimeUnit;
 
 public class Update implements Runnable {
-  private static final long UPDATE_FREQUENCY = 3L;
+  private static final long UPDATE_FREQUENCY = 4L;
 
   private Controller controller;
   private static Replica backupReplica;
@@ -32,7 +32,7 @@ public class Update implements Runnable {
           for(Replica r : controller.getConfig()) {
             while(controller.getQueueSize() == 0 && controller.getConfig().size() <= controller.getMinReplicasRunning()) {}
             controller.addToConfig(backupReplica);
-            r.setToUpdate(true);
+            r.setUpdate(true);
             controller.addToQueue(r);
             break;
           }

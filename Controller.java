@@ -5,10 +5,11 @@ import javax.swing.JOptionPane;
 
 public class Controller implements Runnable {
 
+  public static String[] commands;
+
   //specify the minimum number of replicas that should be running no matter what
   private static int minReplicasRunning;
   private static Controller controller = null;
-  private static String[] commands;
   private static boolean running;
   private static Set<Replica> config; //set with running replicas
   private static Set<Replica> pool; //set with the available replicas (not running)
@@ -281,23 +282,14 @@ public class Controller implements Runnable {
         for(Replica r : config) {
           if(r == replica) {
             ProcessBuilder processBuilder = new ProcessBuilder();
-            if(r.toDestroy()) {
-              processBuilder.command("bash", "-c", commands[1] + " " + r.getName());
-            }
-            else processBuilder.command("bash", "-c", commands[3] + r.getName());
+            processBuilder.command("bash", "-c", commands[3] + r.getName());
             try {
               Process process = processBuilder.start();
               process.waitFor();
-              if(r.toDestroy()) {
-                System.out.println("\n\n" + r.getName() + " was destroyed.");
-                r.destroyReplica(r.getName());
-              }
-              else {
-                System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
-                r.setStatus(false);
-                pool.add(r);
-                config.remove(r);
-              }
+              System.out.println("\n\nRemoved one replica (" + r.getName() + ")");
+              r.setStatus(false);
+              pool.add(r);
+              config.remove(r);
               System.out.println("\nconfig size: " + config.size());
               System.out.println("pool size: " + pool.size());
               System.out.print(">>>>");
@@ -320,9 +312,9 @@ public class Controller implements Runnable {
           try {
             Process process = processBuilder.start();
             process.waitFor();
-            if(r.toUpdate()) {
+            if(r.getUpdate()) {
               config.remove(Update.getBackupReplica());
-              r.setToUpdate(false);
+              r.setUpdate(false);
             }
             if(r.isNew()) {
               System.out.println("\n\n" + r.getName() + " was added to the configuration!");
