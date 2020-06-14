@@ -1,5 +1,7 @@
 #Box name;VM name;PrivateIP;Updates (seperated by ';')
 #First Box will be used as a backup replica
-ubuntu-VAGRANTSLASH-trusty64;Ubuntu;192.168.33.17
-lubuntu;Lubuntu;192.168.33.11
-centOS;CentOS;192.168.33.15;echo "another fucking update"
+ubuntu-VAGRANTSLASH-trusty64;Ubuntu;192.168.33.10
+centOS;CentOS;192.168.33.25;yum -y update
+centOS;CentOSv2;192.168.33.26
+ubuntu-VAGRANTSLASH-trusty64;Ubuntu2;192.168.33.17;apt-get update;apt-get -y upgrade
+lubuntu;Lubuntu;192.168.33.30
