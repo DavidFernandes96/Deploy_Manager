@@ -4,6 +4,9 @@
  *
  * @author David Fernandes
  *
+ * Launches configuration and update threads and has
+ * all the sets and other import data structers to
+ * the project.
  */
 
 import java.util.*;
@@ -71,6 +74,10 @@ public class Controller implements Runnable {
 
 	public static int getQueueSize() {
 		return queue.size();
+	}
+
+	public static int getPoolSize() {
+		return pool.size();
 	}
 
 	public int init() {
@@ -153,13 +160,13 @@ public class Controller implements Runnable {
 		return 0;
 	}
 
-	public void start() {
+	public int start() {
 		if (isRunning()) {
 			Thread t = new Thread(() -> {
 				JOptionPane.showMessageDialog(null, "System already running.");
 			});
 			t.start();
-			return;
+			return -1;
 		}
 		if(firstInit) init();
 		System.out.println("\n\nStarting....\n");
@@ -187,6 +194,7 @@ public class Controller implements Runnable {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+		return 0;
 	}
 
 	public void stop() {

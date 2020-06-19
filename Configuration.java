@@ -58,9 +58,10 @@ public class Configuration implements Runnable {
 										*	change on backupReplica
 										*/
 										if(Replica.getReplica(dataFile[1]).getName().equals(Update.getBackupReplica().getName())) {
+											controller.init();
 											ProcessBuilder processBuilder = new ProcessBuilder();
 											processBuilder.command("bash", "-c",
-													controller.commands[5] + " " + Replica.getReplica(dataTemp[1]).getName());
+													controller.commands[5] + Replica.getReplica(dataTemp[1]).getName());
 											Process process = processBuilder.start();
 											try {
 												process.waitFor();
@@ -71,7 +72,10 @@ public class Configuration implements Runnable {
 										/*
 										*	other replicas changes
 										*/
-										else controller.addToQueue(Replica.getReplica(dataFile[1]));
+										else {
+											while(!controller.getConfig().contains(Replica.getReplica(dataFile[1]))) {}
+											controller.addToQueue(Replica.getReplica(dataFile[1]));
+										}
 									}
 
 								}
@@ -80,13 +84,14 @@ public class Configuration implements Runnable {
 								 */
 								else {
 									if (controller.isRunning()) {
+										String name = Replica.getReplica(dataTemp[1]).getName();
+										while(!controller.getConfig().contains(Replica.getReplica(name))) {}
 										ProcessBuilder processBuilder = new ProcessBuilder();
 										processBuilder.command("bash", "-c", controller.commands[1] + " "
 												+ Replica.getReplica(dataTemp[1]).getName());
 										Process process = processBuilder.start();
 										try {
 											process.waitFor();
-											String name = Replica.getReplica(dataTemp[1]).getName();
 											controller.getConfig().remove(Replica.getReplica(name));
 											Replica.getReplica(name).destroyReplica(name);
 											System.out.println("\n\n" + name + " was destroyed.");
@@ -106,19 +111,20 @@ public class Configuration implements Runnable {
 									controller.addToPool(new Replica(dataFile[1]));
 							}
 							/*
-							 * replica removal
+							 * replica removal (last line)
 							 */
 							else if (line == null && line2 != null && !line2.startsWith("#")) {
 								lineCount++;
 								String[] dataTemp = line2.split(";");
 								if (controller.isRunning()) {
+									String name = Replica.getReplica(dataTemp[1]).getName();
+									while(!controller.getConfig().contains(Replica.getReplica(name))) {}
 									ProcessBuilder processBuilder = new ProcessBuilder();
 									processBuilder.command("bash", "-c",
 											controller.commands[1] + " " + Replica.getReplica(dataTemp[1]).getName());
 									Process process = processBuilder.start();
 									try {
 										process.waitFor();
-										String name = Replica.getReplica(dataTemp[1]).getName();
 										controller.getConfig().remove(Replica.getReplica(name));
 										Replica.getReplica(name).destroyReplica(name);
 										System.out.println("\n\n" + name + " was destroyed.");

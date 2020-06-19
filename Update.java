@@ -40,12 +40,8 @@ public class Update implements Runnable {
 					System.out.println("\n\nUpdate about to begin...");
 					Object[] arrayList = controller.getConfig().toArray();
 					Replica[] arrayReplica = new Replica[arrayList.length];
-					System.out.println("\n\nsize: " + arrayList.length);
-					System.out.print(">>>>");
-					for(int i=0; i<arrayList.length; i++) arrayReplica[i] = (Replica)arrayList[i];
+					for (int i = 0; i<arrayList.length; i++) arrayReplica[i] = (Replica)arrayList[i];
 					for (int i = 0; i < arrayReplica.length; i++) {
-						while (controller.getQueueSize() == 0
-							&& controller.getConfig().size() <= controller.getMinReplicasRunning()) {}
 						if(controller.getConfig().contains(arrayReplica[i])) {
 							controller.addToConfig(backupReplica);
 							Replica replica = arrayReplica[i];
@@ -61,6 +57,7 @@ public class Update implements Runnable {
 			};
 
 		};
+		if(!controller.isRunning()) Thread.currentThread().interrupt();
 		Timer timer = new Timer();
 		timer.scheduleAtFixedRate(tt, 2000, TimeUnit.MINUTES.toMillis(UPDATE_FREQUENCY));
 	}

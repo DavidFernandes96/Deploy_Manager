@@ -52,13 +52,14 @@ public class Main {
 				switch (opt) {
 				case 1: {
 					controller = Controller.getController();
-					controller.start();
-					Thread t1 = new Thread(Controller.getController());
-					t1.start();
-				 	Thread t2 = new Thread(new Update());
-					t2.start();
-					Thread t3 = new Thread(new Configuration());
-					t3.start();
+					if(controller.start() != -1) {
+						Thread t1 = new Thread(Controller.getController());
+						t1.start();
+					 	Thread t2 = new Thread(new Update());
+						t2.start();
+						Thread t3 = new Thread(new Configuration());
+						t3.start();
+					}
 					menu();
 					break;
 				}
