@@ -139,7 +139,12 @@ public class Configuration implements Runnable {
 						reader.close();
 						reader2.close();
 					}
-					controller.init();
+					if(controller.init() == -1) {
+						System.out.println();
+						JOptionPane.showMessageDialog(null, "Not enough replicas...add more on the configuration file");
+						controller.stop();
+						System.exit(-1);
+					}
 				} catch (IOException e) {
 					System.out.println(e);
 				}

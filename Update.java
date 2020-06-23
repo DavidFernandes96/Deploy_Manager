@@ -16,12 +16,18 @@ import java.util.concurrent.TimeUnit;
 public class Update implements Runnable {
 	private static final long UPDATE_FREQUENCY = 4L;
 
+	private static volatile boolean done;
 	private Controller controller;
 	private static Replica backupReplica;
 
 	public Update() {
 		controller = Controller.getController();
+		done = false;
 	}
+
+	public static void shutdown() {
+    done = true;
+  }
 
 	public static Replica getBackupReplica() {
 		return backupReplica;
@@ -31,13 +37,21 @@ public class Update implements Runnable {
 		backupReplica = replica;
 	}
 
+	private Timer timer = new Timer();
+
 	public void run() {
 		TimerTask tt = new TimerTask() {
 
 			@Override
 			public void run() {
+				if(!controller.isRunning()) {
+					System.out.println("\n\nentrou aqui");
+					quit();
+					Thread.currentThread().interrupt();
+				}
 				try {
 					System.out.println("\n\nUpdate about to begin...");
+					System.out.print(">>>>");
 					Object[] arrayList = controller.getConfig().toArray();
 					Replica[] arrayReplica = new Replica[arrayList.length];
 					for (int i = 0; i<arrayList.length; i++) arrayReplica[i] = (Replica)arrayList[i];
@@ -57,8 +71,12 @@ public class Update implements Runnable {
 			};
 
 		};
-		if(!controller.isRunning()) Thread.currentThread().interrupt();
-		Timer timer = new Timer();
+
 		timer.scheduleAtFixedRate(tt, 2000, TimeUnit.MINUTES.toMillis(UPDATE_FREQUENCY));
+
+	}
+
+	private void quit(){
+		timer.cancel();
 	}
 }

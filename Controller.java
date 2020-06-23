@@ -130,7 +130,7 @@ public class Controller implements Runnable {
 					}
 				}
 			}
-			if(Replica.getNumberReplicas() == 0) return -1;
+			if(Replica.getNumberReplicas() <= 0) return -1;
 			try {
 				/*
 				 *  grab the backup replica
@@ -232,6 +232,7 @@ public class Controller implements Runnable {
 			pool.clear();
 			config.clear();
 			queue.clear();
+			//Update.shutdown();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {

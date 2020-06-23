@@ -4,6 +4,8 @@
  *
  * @author David Fernandes
  *
+ * Autonomous system which removes and adds virtual machines
+ * given a configuration file.
  */
 
 import java.util.Scanner;
@@ -71,6 +73,7 @@ public class Main {
 				case 3:
 					controller = Controller.getController();
 					controller.stop();
+					controller.init();
 					menu();
 					break;
 				case 4:
