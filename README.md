@@ -2,8 +2,8 @@
 
 ## Automatic system that removes and instantiates virtual machines based on a configuration file.
 
+## System modes
 
-System has two modes:
 * **Change of configuration** - while the system is running, the user might make a change to the configuration file, so the system removes the VMs who suffered an alteration (and only those) and applies the necessary changes to them, whether that be a new IP Address or the addition/removal of an update.
 It also gives the user the ability to remove or add new boxes to the system.
 Whatever changes the user performs, one thing must be respected - the maximum number of machines **not** running mustn't exceed a particular value. That number is the result of a formula and it can range between 1 and higher. The formula is the following: <img src="https://render.githubusercontent.com/render/math?math=$f = \frac{n-1}{3}$">.
@@ -18,5 +18,18 @@ Where <img src="https://render.githubusercontent.com/render/math?math=n"> is the
 
 ## **How to use**
 
-Compile - `$javac Main.java`
-Execute - `$java Main`
+After installing both Vagrant and Virtual Box, go to the project directory and create a file with the name *config.txt*. Inside this file add as many vagrant boxes as you want (take a look at [this](https://app.vagrantup.com/boxes/search) list).
+Each line must follow a particular rule:
+
+```
+<Name of the box e.g "ubuntu/trusty64">;<hostname>;<IP Address>;[update 1];[update 2];(...);[update n]
+```
+If you need help check out the example here with the file with same name.
+
+Compile and execute:
+```
+$javac Main.java
+```
+```
+$java Main
+```
