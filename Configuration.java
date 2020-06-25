@@ -16,10 +16,16 @@ import java.util.concurrent.TimeUnit;
 
 public class Configuration implements Runnable {
 	private Controller controller;
+	private static Timer timer;
 
 	public Configuration() {
 		controller = Controller.getController();
+		timer = null;
 	}
+
+	public static void shutdown() {
+    timer.cancel();
+  }
 
 	public void run() {
 		File file = new File("config.txt");
@@ -152,7 +158,7 @@ public class Configuration implements Runnable {
 			}
 		};
 
-		Timer timer = new Timer();
+		timer = new Timer();
 		/*
 		 * repeat the check every 2 seconds
 		 */

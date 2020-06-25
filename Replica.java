@@ -1,9 +1,9 @@
 
 /**
  * Deploy Manager
- * 
+ *
  * @author David Fernandes
- * 
+ *
  * Replica class
  */
 
@@ -36,7 +36,7 @@ public class Replica {
 	public boolean getStatus() {
 		return this.status;
 	}
-	
+
 	public void setStatus(boolean status) {
 		this.status = status;
 	}
@@ -68,6 +68,11 @@ public class Replica {
 
 	public void setUpdate(boolean bValue) {
 		this.update = bValue;
+	}
+
+	public static void reset() {
+		map.clear();
+		numberReplicas = -1;
 	}
 
 }

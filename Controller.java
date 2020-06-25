@@ -208,8 +208,7 @@ public class Controller implements Runnable {
 		System.out.println("\n\nTurning off the system...");
 		running = false;
 		System.out.println("\n\nWaiting for threads to finish...stand by...\n\n");
-		t1.interrupt();
-		t2.interrupt();
+		t1.interrupt(); t2.interrupt();
 		try {
 			t1.join(5000);
 			t2.join(5000);
@@ -232,7 +231,7 @@ public class Controller implements Runnable {
 			pool.clear();
 			config.clear();
 			queue.clear();
-			//Update.shutdown();
+			Replica.reset();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
@@ -317,7 +316,7 @@ public class Controller implements Runnable {
 	}
 
 	private void removeReplica() throws InterruptedException {
-		while (!Thread.currentThread().isInterrupted()) {
+		while (!t1.isInterrupted()) {
 			if (queue.size() > 0 && config.size() > minReplicasRunning) {
 				Replica replica = queue.remove();
 				if (config.contains(replica)) {
@@ -342,7 +341,7 @@ public class Controller implements Runnable {
 	}
 
 	private void addReplica() throws InterruptedException {
-		while (!Thread.currentThread().isInterrupted()) {
+		while (!t2.isInterrupted()) {
 			if (!pool.isEmpty()) {
 				for (Replica r : pool) {
 					ProcessBuilder processBuilder = new ProcessBuilder();

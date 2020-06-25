@@ -48,6 +48,7 @@ public class Main {
 			JOptionPane.showMessageDialog(null, "Not enough replicas...add more on the configuration file");
 			System.exit(-1);
 		}
+		Thread t1 = null, t2 = null, t3 = null;
 		while (true) {
 			try {
 				opt = stdin.nextInt();
@@ -55,11 +56,11 @@ public class Main {
 				case 1: {
 					controller = Controller.getController();
 					if(controller.start() != -1) {
-						Thread t1 = new Thread(Controller.getController());
+						t1 = new Thread(Controller.getController());
 						t1.start();
-					 	Thread t2 = new Thread(new Update());
+					 	t2 = new Thread(new Update());
 						t2.start();
-						Thread t3 = new Thread(new Configuration());
+						t3 = new Thread(new Configuration());
 						t3.start();
 					}
 					menu();
@@ -73,6 +74,16 @@ public class Main {
 				case 3:
 					controller = Controller.getController();
 					controller.stop();
+					t1.interrupt(); t2.interrupt(); t3.interrupt();
+					try {
+						t1.join(5000);
+						t2.join(5000);
+						t3.join(5000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					Update.shutdown();
+					Configuration.shutdown();
 					controller.init();
 					menu();
 					break;
