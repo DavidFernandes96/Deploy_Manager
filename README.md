@@ -1,6 +1,6 @@
 # Deploy Manager
 
-## Automatic system that removes and instantiates virtual machines based on a configuration file.
+Automatic system that removes and instantiates virtual machines based on a configuration file.
 
 ## System modes
 
@@ -13,7 +13,7 @@ Where <img src="https://render.githubusercontent.com/render/math?math=n"> is the
 
 ## **Software required**
 
-[Vagrant](https://www.vagrantup.com) and Virtual Box.
+[Vagrant](https://www.vagrantup.com) and [Virtual Box](https://www.virtualbox.org/wiki/Downloads).
 
 
 ## **How to use**
@@ -24,7 +24,7 @@ Each line must follow a particular rule:
 ```
 <Name of the box e.g "ubuntu/trusty64">;<hostname>;<IP Address>;[update 1];[update 2];(...);[update n]
 ```
-If you need help check out the example here with the file with same name.
+If you need help check out [this](https://github.com/DavidFernandes96/Deploy_Manager/blob/master/config.txt) example.
 
 Compile and execute:
 ```
