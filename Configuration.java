@@ -24,8 +24,8 @@ public class Configuration implements Runnable {
 	}
 
 	public static void shutdown() {
-    timer.cancel();
-  }
+	        timer.cancel();
+	}
 
 	public void run() {
 		File file = new File("config.txt");

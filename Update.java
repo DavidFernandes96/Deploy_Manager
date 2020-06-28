@@ -59,7 +59,7 @@ public class Update implements Runnable {
 					}
 					System.out.println("\n\nEnd of Update.");
 				}catch(Exception e) {
-					System.out.println(e);
+					e.printStackTrace();
 				}
 			};
 
