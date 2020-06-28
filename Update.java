@@ -26,8 +26,8 @@ public class Update implements Runnable {
 	}
 
 	public static void shutdown() {
-    timer.cancel();
-  }
+		timer.cancel();
+	}
 
 	public static Replica getBackupReplica() {
 		return backupReplica;
